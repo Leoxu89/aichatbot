@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Optimal Early-Retirement &amp; Happiness Calculator</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1b2430; --muted:#5b6776;
+    --line:#e3e7ee; --accent:#3056d3;
+    --money:#2e7d32; --freedom:#1565c0; --health:#e65100;
+    --wealth:#2e7d32; --wealthwork:#9aa4b2; --hap:#6a1b9a; --opt:#c62828;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.45; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:24px 18px 80px;}
+  header h1{font-size:1.7rem; margin:0 0 6px;}
+  header p.sub{margin:0 0 4px; color:var(--muted); max-width:760px;}
+  .layout{display:grid; grid-template-columns:340px 1fr; gap:22px; margin-top:22px;}
+  @media(max-width:880px){ .layout{grid-template-columns:1fr;} }
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 18px 20px; box-shadow:0 1px 2px rgba(20,30,50,.04);}
+  .card h2{font-size:1.02rem; margin:0 0 14px; letter-spacing:.01em;}
+  .card h3{font-size:.82rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:18px 0 10px;}
+  .panel{position:sticky; top:14px;}
+  label.field{display:block; margin-bottom:13px; font-size:.86rem;}
+  label.field .lab{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; color:var(--muted);}
+  label.field .lab b{color:var(--ink); font-weight:600;}
+  input[type=number]{width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:9px; font-size:.95rem; background:#fff; color:var(--ink);}
+  input[type=number]:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(48,86,211,.12);}
+  input[type=range]{width:100%; accent-color:var(--accent);}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .hint{font-size:.74rem; color:var(--muted); margin-top:2px;}
+  details{border-top:1px solid var(--line); margin-top:14px; padding-top:6px;}
+  details summary{cursor:pointer; font-size:.82rem; color:var(--accent); font-weight:600; padding:6px 0;}
+  .headline{background:linear-gradient(135deg,#eef2ff,#f4fff6); border:1px solid #d9e2ff; border-radius:14px; padding:18px 20px; margin-bottom:18px;}
+  .headline .big{font-size:2.1rem; font-weight:700; line-height:1.1;}
+  .headline .big span{color:var(--accent);}
+  .headline .note{color:var(--muted); margin-top:6px; font-size:.92rem;}
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px;}
+  .stat{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px;}
+  .stat .k{font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);}
+  .stat .v{font-size:1.18rem; font-weight:650; margin-top:3px;}
+  .chartcard{margin-bottom:18px;}
+  .chart-wrap{position:relative;}
+  svg.chart{width:100%; height:auto; display:block;}
+  .legend{display:flex; flex-wrap:wrap; gap:14px; font-size:.8rem; color:var(--muted); margin-top:8px;}
+  .legend .it{display:flex; align-items:center; gap:6px;}
+  .legend .sw{width:16px; height:4px; border-radius:2px; display:inline-block;}
+  .legend .sw.dash{background:repeating-linear-gradient(90deg,var(--wealthwork) 0 5px,transparent 5px 9px);}
+  .tooltip{position:absolute; pointer-events:none; background:rgba(20,28,40,.92); color:#fff; font-size:.74rem; padding:7px 9px; border-radius:8px; transform:translate(-50%,-115%); white-space:nowrap; opacity:0; transition:opacity .08s; z-index:5;}
+  .tooltip b{font-weight:600;}
+  table.scen{width:100%; border-collapse:collapse; font-size:.84rem;}
+  table.scen th,table.scen td{text-align:right; padding:8px 8px; border-bottom:1px solid var(--line);}
+  table.scen th:first-child,table.scen td:first-child{text-align:left;}
+  table.scen thead th{color:var(--muted); font-weight:600; font-size:.74rem; text-transform:uppercase; letter-spacing:.04em;}
+  table.scen tr.opt td{background:#f4fff6; font-weight:600;}
+  .about p{font-size:.9rem; color:#33404f;}
+  .about ul{font-size:.88rem; color:#33404f; padding-left:20px;}
+  .about a{color:var(--accent);}
+  .warn{font-size:.84rem; color:#8a4b00; background:#fff6e8; border:1px solid #ffe0b2; border-radius:10px; padding:10px 12px; margin-top:10px;}
+  code{background:#eef1f6; padding:1px 5px; border-radius:5px; font-size:.85em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Optimal Early-Retirement &amp; Happiness Calculator</h1>
+    <p class="sub">Money buys different amounts of happiness at different ages, and free time is worth more when you're young and healthy than when you're frail. This tool models both, projects your wealth with compounding, and finds the semi-retirement / FIRE age that maximizes your <b>lifetime happiness</b> &mdash; not just your net worth.</p>
+    <p class="sub" style="font-size:.8rem;">All figures in today's dollars; use a <b>real</b> (after-inflation) return. Educational model, not financial advice.</p>
+  </header>
+
+  <div class="layout">
+    <!-- ============ INPUTS ============ -->
+    <aside class="card panel">
+      <h2>Your situation</h2>
+
+      <label class="field">
+        <span class="lab">Current age <b id="o_age">30</b></span>
+        <input type="number" id="i_age" value="30" min="0" max="80" step="1">
+      </label>
+
+      <label class="field">
+        <span class="lab">Initial investable assets <b id="o_w0"></b></span>
+        <input type="number" id="i_w0" value="200000" min="0" step="1000">
+        <span class="hint">Money you can put down to invest today.</span>
+      </label>
+
+      <label class="field">
+        <span class="lab">Annual income if you keep working <b id="o_inc"></b></span>
+        <input type="number" id="i_inc" value="120000" min="0" step="1000">
+        <span class="hint">Take-home pay you save/invest from, per year.</span>
+      </label>
+
+      <label class="field">
+        <span class="lab">Expected return / yr <b id="o_r">7%</b></span>
+        <input type="number" id="i_r" value="7" min="-5" max="40" step="0.5">
+        <span class="hint">Real annual return on investments (try 7%, 10%, 20%).</span>
+      </label>
+
+      <h3>Spending &amp; horizon</h3>
+
+      <div class="row2">
+        <label class="field">
+          <span class="lab">Spend / yr working</span>
+          <input type="number" id="i_sw" value="60000" min="0" step="1000">
+        </label>
+        <label class="field">
+          <span class="lab">Spend / yr retired</span>
+          <input type="number" id="i_sr" value="60000" min="0" step="1000">
+        </label>
+      </div>
+      <span class="hint" style="display:block;margin-top:-6px;margin-bottom:12px;">Lifestyle cost. Retired spending is drawn from your portfolio.</span>
+
+      <label class="field">
+        <span class="lab">Plan to age <b id="o_end">90</b></span>
+        <input type="number" id="i_end" value="90" min="40" max="110" step="1">
+      </label>
+
+      <details>
+        <summary>Happiness model assumptions</summary>
+        <div style="padding-top:8px;">
+          <label class="field">
+            <span class="lab">Value of money emphasis <b id="o_wm">1.0</b></span>
+            <input type="range" id="i_wm" value="1.0" min="0" max="2" step="0.05">
+          </label>
+          <label class="field">
+            <span class="lab">Value of freedom emphasis <b id="o_wf">0.8</b></span>
+            <input type="range" id="i_wf" value="0.8" min="0" max="2" step="0.05">
+            <span class="hint">How much you weigh free time vs. money.</span>
+          </label>
+          <label class="field">
+            <span class="lab">Free time while working <b id="o_fw">30%</b></span>
+            <input type="range" id="i_fw" value="0.30" min="0" max="1" step="0.05">
+            <span class="hint">Evenings/weekends as a fraction of a fully-free year.</span>
+          </label>
+          <label class="field">
+            <span class="lab">Money "satisfies" around <b id="o_c0"></b>/yr</span>
+            <input type="number" id="i_c0" value="75000" min="5000" step="1000">
+            <span class="hint">Spending level where extra dollars add much less happiness (~$75&ndash;100k in the research).</span>
+          </label>
+          <label class="field">
+            <span class="lab">Health declines around age <b id="o_hm">72</b></span>
+            <input type="range" id="i_hm" value="72" min="55" max="90" step="1">
+            <span class="hint">Healthspan midpoint &mdash; where vitality crosses 50%.</span>
+          </label>
+          <label class="field">
+            <span class="lab">Money/freedom "switch on" around age <b id="o_rm">15</b></span>
+            <input type="range" id="i_rm" value="15" min="8" max="25" step="1">
+          </label>
+        </div>
+      </details>
+    </aside>
+
+    <!-- ============ RESULTS ============ -->
+    <main>
+      <div class="headline">
+        <div class="big">Retire at <span id="r_optage">&mdash;</span></div>
+        <div class="note" id="r_optnote"></div>
+      </div>
+
+      <div class="stats" id="r_stats"></div>
+
+      <div class="card chartcard">
+        <h2>Lifetime happiness vs. the age you retire</h2>
+        <div class="chart-wrap">
+          <svg class="chart" id="chart_hap" viewBox="0 0 760 360" role="img"></svg>
+          <div class="tooltip" id="tip_hap"></div>
+        </div>
+        <div class="legend">
+          <span class="it"><span class="sw" style="background:var(--hap)"></span> Total lifetime happiness</span>
+          <span class="it"><span class="sw" style="background:var(--opt)"></span> Optimal age</span>
+        </div>
+      </div>
+
+      <div class="card chartcard">
+        <h2>Your wealth over time</h2>
+        <div class="chart-wrap">
+          <svg class="chart" id="chart_wealth" viewBox="0 0 760 360" role="img"></svg>
+          <div class="tooltip" id="tip_wealth"></div>
+        </div>
+        <div class="legend">
+          <span class="it"><span class="sw" style="background:var(--wealth)"></span> Retire at optimal age</span>
+          <span class="it"><span class="sw dash"></span> Keep working to the end</span>
+        </div>
+      </div>
+
+      <div class="card chartcard">
+        <h2>How much happiness money &amp; freedom buy, by age</h2>
+        <div class="chart-wrap">
+          <svg class="chart" id="chart_curves" viewBox="0 0 760 360" role="img"></svg>
+          <div class="tooltip" id="tip_curves"></div>
+        </div>
+        <div class="legend">
+          <span class="it"><span class="sw" style="background:var(--money)"></span> Happiness a dollar can buy</span>
+          <span class="it"><span class="sw" style="background:var(--freedom)"></span> Value of free time</span>
+          <span class="it"><span class="sw" style="background:var(--health)"></span> Health / vitality</span>
+        </div>
+        <p class="hint" style="margin-top:10px;">Both peak in your healthy adult years. Money's payoff fades more slowly than freedom's, because wealth can buy comfort and care when your health can no longer buy adventure.</p>
+      </div>
+
+      <div class="card chartcard">
+        <h2>Scenario comparison</h2>
+        <table class="scen" id="tbl_scen">
+          <thead><tr><th>Strategy</th><th>Money lasts to</th><th>Wealth at end</th><th>Lifetime happiness</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="warn" id="r_warn" style="display:none;"></div>
+      </div>
+
+      <div class="card about">
+        <h2>How this works &amp; the research behind it</h2>
+        <p><b>Wealth.</b> Each year your portfolio compounds at your expected return. While working you add savings (income &minus; spending); once retired you withdraw your spending from the portfolio. If it can no longer cover your spending, consumption is capped at whatever's left.</p>
+        <p><b>Happiness.</b> Each year of life earns happiness from two sources:</p>
+        <ul>
+          <li><b>Money</b> &mdash; <code>moneyEmphasis × enjoymentAbility(age) × ln(1 + spending/satisfies)</code>. The <code>ln</code> captures <i>diminishing marginal utility</i>: happiness rises with the <b>logarithm</b> of income, so the first dollars matter far more than the last.</li>
+          <li><b>Freedom</b> &mdash; <code>freedomEmphasis × freedomValue(age) × freeTimeFraction</code>. Retired = a fully free year; working = only the slice of free time you set.</li>
+        </ul>
+        <p>The <b>enjoyment-ability</b> and <b>freedom-value</b> curves both rise out of childhood (kids face real limits) and fade with declining <b>health</b> &mdash; the single biggest multiplier on what you can do with money <i>and</i> time. The tool then tries <i>every</i> retirement age and picks the one with the highest total. Retire too early and you starve the high-value middle years of money; retire too late and you burn your healthiest, freest years at work.</p>
+        <p><b>Grounded in:</b></p>
+        <ul>
+          <li>Killingsworth, Kahneman &amp; Mellers (2023), <i>Income and emotional well-being: A conflict resolved</i> &mdash; well-being rises with <b>log</b> income. <a href="https://www.pnas.org/doi/10.1073/pnas.2208661120" target="_blank" rel="noopener">PNAS</a></li>
+          <li>Bill Perkins, <i>Die With Zero</i> &mdash; the utility of money declines with age; fulfillment = f(health, money, free time), with health the largest factor. <a href="https://www.madfientist.com/bill-perkins-interview/" target="_blank" rel="noopener">Interview</a></li>
+          <li>Blanchett, <i>Estimating the True Cost of Retirement</i> &mdash; the retirement "spending smile" (go-go / slow-go / no-go years). <a href="https://www.kitces.com/blog/estimating-changes-in-retirement-expenditures-and-the-retirement-spending-smile/" target="_blank" rel="noopener">Kitces</a></li>
+          <li>Blanchflower &mdash; the U-shaped happiness curve over the lifespan, lowest near age 47. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7480662/" target="_blank" rel="noopener">PMC</a></li>
+          <li>Healthspan vs. lifespan: disability-free life expectancy ≈ 63&ndash;64 years. <a href="https://ec.europa.eu/eurostat/statistics-explained/index.php?title=Healthy_life_years_statistics" target="_blank" rel="noopener">Eurostat</a></li>
+        </ul>
+        <div class="warn">This is a simplified educational model in real (inflation-adjusted) dollars. It ignores taxes, market volatility/sequence-of-returns risk, healthcare shocks, Social Security/pensions, and the genuine uncertainty of your own lifespan. Treat the "optimal age" as a thinking tool, not advice.</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const SVGNS = "http://www.w3.org/2000/svg";
+
+/* ---------- formatting ---------- */
+function money(n){
+  const s = n<0 ? "-" : "";
+  n = Math.abs(n);
+  if(n>=1e9) return s+"$"+(n/1e9).toFixed(n>=1e10?0:1)+"B";
+  if(n>=1e6) return s+"$"+(n/1e6).toFixed(n>=1e7?1:2)+"M";
+  if(n>=1e3) return s+"$"+(n/1e3).toFixed(n>=1e4?0:1)+"K";
+  return s+"$"+Math.round(n);
+}
+function money0(n){ return "$"+Math.round(n).toLocaleString(); }
+
+/* ---------- inputs ---------- */
+function readInputs(){
+  const v = id => parseFloat($(id).value);
+  return {
+    a0: Math.round(v("i_age")),
+    W0: v("i_w0"),
+    income: v("i_inc"),
+    r: v("i_r")/100,
+    spendWork: v("i_sw"),
+    spendRetire: v("i_sr"),
+    aEnd: Math.round(v("i_end")),
+    wMoney: v("i_wm"),
+    wFreedom: v("i_wf"),
+    freeWork: v("i_fw"),
+    c0: v("i_c0"),
+    healthMid: v("i_hm"),
+    riseMid: v("i_rm"),
+    riseK: 0.30, healthK: 0.11,
+    moneyHealthExp: 0.6, freedomHealthExp: 1.0
+  };
+}
+
+/* ---------- age curves ---------- */
+function rise(age,p){ return 1/(1+Math.exp(-p.riseK*(age-p.riseMid))); }
+function health(age,p){ return 1/(1+Math.exp(p.healthK*(age-p.healthMid))); }
+function enjoyMoney(age,p){ return rise(age,p)*Math.pow(health(age,p),p.moneyHealthExp); }
+function valueFreedom(age,p){ return rise(age,p)*Math.pow(health(age,p),p.freedomHealthExp); }
+
+/* ---------- simulate a single retirement age R ---------- */
+/* R = first age you are retired. R=a0 -> retire now. R=aEnd+1 -> never retire. */
+function simulate(R,p){
+  let W = p.W0;
+  const ages=[], wealth=[], cons=[], hap=[];
+  let ranOut=null, total=0;
+  for(let age=p.a0; age<=p.aEnd; age++){
+    ages.push(age); wealth.push(W);
+    let c, Wend;
+    const retired = age>=R;
+    if(!retired){
+      c = p.spendWork;
+      Wend = W*(1+p.r) + (p.income - p.spendWork);
+    } else {
+      const avail = W*(1+p.r);
+      c = Math.min(p.spendRetire, Math.max(0,avail));
+      Wend = Math.max(0, avail - c);
+      if(avail < p.spendRetire && ranOut===null) ranOut = age;
+    }
+    cons.push(c);
+    const ff = retired ? 1.0 : p.freeWork;
+    const mh = p.wMoney * enjoyMoney(age,p) * Math.log(1 + Math.max(0,c)/p.c0);
+    const fh = p.wFreedom * valueFreedom(age,p) * ff;
+    hap.push(mh+fh);
+    total += mh+fh;
+    W = Wend;
+  }
+  return {ages, wealth, cons, hap, endWealth:W, ranOut, total};
+}
+
+/* ---------- optimize over all retirement ages ---------- */
+function optimize(p){
+  const Rs=[], totals=[];
+  let best={R:p.a0, total:-Infinity};
+  for(let R=p.a0; R<=p.aEnd+1; R++){
+    const s = simulate(R,p);
+    Rs.push(R); totals.push(s.total);
+    if(s.total>best.total) best={R, total:s.total, sim:s};
+  }
+  // earliest fully-funded ("classic FIRE") age: money lasts to aEnd
+  let fireAge=null;
+  for(let R=p.a0; R<=p.aEnd; R++){
+    if(simulate(R,p).ranOut===null){ fireAge=R; break; }
+  }
+  return {Rs, totals, best, fireAge, neverRetire:p.aEnd+1};
+}
+
+/* ============ generic SVG line chart with hover ============ */
+function niceTicks(min,max,n){
+  if(min===max){ return [min]; }
+  const span=max-min, raw=span/n, mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  const norm=raw/mag, step=(norm<1.5?1:norm<3?2:norm<7?5:10)*mag;
+  const t=[]; let v=Math.ceil(min/step)*step;
+  for(; v<=max+step*0.001; v+=step) t.push(Math.abs(v)<step*1e-9?0:v);
+  return t;
+}
+function el(tag,attrs){
+  const e=document.createElementNS(SVGNS,tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  return e;
+}
+function drawChart(svgId, spec){
+  const svg=$(svgId); svg.innerHTML="";
+  const W=760,H=360, m={l:64,r:18,t:16,b:46};
+  const pw=W-m.l-m.r, ph=H-m.t-m.b;
+  let [x0,x1]=spec.xDomain, [y0,y1]=spec.yDomain;
+  if(y0===y1){ y1=y0+1; }
+  const sx=x=>m.l+(x-x0)/(x1-x0)*pw;
+  const sy=y=>m.t+ph-(y-y0)/(y1-y0)*ph;
+
+  // gridlines + y ticks
+  const yt=spec.yTicks||niceTicks(y0,y1,5);
+  yt.forEach(t=>{
+    const y=sy(t);
+    svg.appendChild(el("line",{x1:m.l,y1:y,x2:W-m.r,y2:y,stroke:"#eef1f6","stroke-width":1}));
+    const lb=el("text",{x:m.l-8,y:y+3.5,"text-anchor":"end","font-size":11,fill:"#7b8595"});
+    lb.textContent=spec.fmtY?spec.fmtY(t):t;
+    svg.appendChild(lb);
+  });
+  // x ticks
+  const xt=spec.xTicks||niceTicks(x0,x1,7);
+  xt.forEach(t=>{
+    const x=sx(t);
+    svg.appendChild(el("line",{x1:x,y1:m.t,x2:x,y2:m.t+ph,stroke:"#f4f6fa","stroke-width":1}));
+    const lb=el("text",{x:x,y:m.t+ph+18,"text-anchor":"middle","font-size":11,fill:"#7b8595"});
+    lb.textContent=spec.fmtX?spec.fmtX(t):t;
+    svg.appendChild(lb);
+  });
+  // axis line
+  svg.appendChild(el("line",{x1:m.l,y1:m.t+ph,x2:W-m.r,y2:m.t+ph,stroke:"#cfd6e0","stroke-width":1}));
+  // axis labels
+  if(spec.xlabel){const t=el("text",{x:m.l+pw/2,y:H-6,"text-anchor":"middle","font-size":12,fill:"#5b6776"});t.textContent=spec.xlabel;svg.appendChild(t);}
+  if(spec.ylabel){const t=el("text",{x:14,y:m.t+ph/2,"text-anchor":"middle","font-size":12,fill:"#5b6776",transform:`rotate(-90 14 ${m.t+ph/2})`});t.textContent=spec.ylabel;svg.appendChild(t);}
+
+  // markers (vertical lines)
+  (spec.markers||[]).forEach(mk=>{
+    const x=sx(mk.x);
+    svg.appendChild(el("line",{x1:x,y1:m.t,x2:x,y2:m.t+ph,stroke:mk.color,"stroke-width":2,"stroke-dasharray":"5 4",opacity:.85}));
+    if(mk.label){const t=el("text",{x:Math.min(x+5,W-m.r-2),y:m.t+12,"font-size":11,fill:mk.color,"font-weight":600,"text-anchor":x>W-90?"end":"start"});t.textContent=mk.label;svg.appendChild(t);}
+  });
+
+  // series
+  spec.series.forEach(s=>{
+    if(!s.points.length) return;
+    let d="";
+    s.points.forEach((pt,i)=>{ d+=(i?"L":"M")+sx(pt[0]).toFixed(2)+" "+sy(pt[1]).toFixed(2)+" "; });
+    const path=el("path",{d:d,fill:"none",stroke:s.color,"stroke-width":s.width||2.4,"stroke-linejoin":"round"});
+    if(s.dash) path.setAttribute("stroke-dasharray","6 5");
+    svg.appendChild(path);
+  });
+
+  // ---- hover ----
+  if(spec.hover && spec.hover.length){
+    const guide=el("line",{x1:0,y1:m.t,x2:0,y2:m.t+ph,stroke:"#9aa4b2","stroke-width":1,opacity:0});
+    svg.appendChild(guide);
+    const dots=spec.hover.map(h=>{const c=el("circle",{r:4,fill:h.color,stroke:"#fff","stroke-width":1.5,opacity:0});svg.appendChild(c);return c;});
+    const tip=$(spec.tipId);
+    const rect=el("rect",{x:m.l,y:m.t,width:pw,height:ph,fill:"transparent"});
+    svg.appendChild(rect);
+    const wrap=svg.parentElement;
+    function move(evt){
+      const r=svg.getBoundingClientRect();
+      const px=(evt.clientX-r.left)/r.width*W;
+      let xv=x0+(px-m.l)/pw*(x1-x0);
+      xv=Math.max(x0,Math.min(x1,xv));
+      const xi=Math.round(xv);
+      const gx=sx(xi);
+      guide.setAttribute("x1",gx); guide.setAttribute("x2",gx); guide.setAttribute("opacity",.9);
+      let rows="";
+      spec.hover.forEach((h,i)=>{
+        const pt=h.points.find(p=>p[0]===xi);
+        if(pt){
+          dots[i].setAttribute("cx",gx); dots[i].setAttribute("cy",sy(pt[1])); dots[i].setAttribute("opacity",1);
+          rows+=`<div><span style="color:${h.color}">&#9632;</span> ${h.label}: <b>${h.fmt(pt[1])}</b></div>`;
+        } else dots[i].setAttribute("opacity",0);
+      });
+      tip.innerHTML=`<b>${spec.hoverTitle?spec.hoverTitle(xi):xi}</b>${rows}`;
+      const left=gx/W*r.width;
+      tip.style.left=left+"px";
+      tip.style.top=(m.t+10)+"px";
+      tip.style.opacity=1;
+    }
+    rect.addEventListener("mousemove",move);
+    rect.addEventListener("mouseleave",()=>{
+      guide.setAttribute("opacity",0); dots.forEach(d=>d.setAttribute("opacity",0)); tip.style.opacity=0;
+    });
+  }
+}
+
+/* ============ render everything ============ */
+function render(){
+  const p=readInputs();
+  // guard
+  if(p.aEnd<=p.a0){ $("r_optnote").textContent="Set your planning age above your current age."; return; }
+
+  // echo input labels
+  $("o_age").textContent=p.a0;
+  $("o_w0").textContent=money0(p.W0);
+  $("o_inc").textContent=money0(p.income);
+  $("o_r").textContent=(p.r*100).toFixed(1)+"%";
+  $("o_end").textContent=p.aEnd;
+  $("o_wm").textContent=p.wMoney.toFixed(2);
+  $("o_wf").textContent=p.wFreedom.toFixed(2);
+  $("o_fw").textContent=Math.round(p.freeWork*100)+"%";
+  $("o_c0").textContent=money0(p.c0);
+  $("o_hm").textContent=p.healthMid;
+  $("o_rm").textContent=p.riseMid;
+
+  const opt=optimize(p);
+  const Rstar=opt.best.R;
+  const optSim=opt.best.sim;
+  const neverSim=simulate(opt.neverRetire,p);
+  const nowSim=simulate(p.a0,p);
+
+  // headline
+  if(Rstar>p.aEnd){
+    $("r_optage").textContent="never (keep working)";
+    $("r_optnote").textContent="Under these assumptions, working through your horizon beats retiring early — try a higher return, more savings, or weighting freedom more.";
+  } else {
+    $("r_optage").textContent=Rstar + (Rstar<=p.a0?" (now)":"");
+    const yrs=Rstar-p.a0;
+    let note = Rstar<=p.a0
+      ? "You could step away today and still come out ahead on lifetime happiness."
+      : `That's about <b>${yrs}</b> more year${yrs===1?"":"s"} of work. `;
+    if(Rstar>p.a0){
+      note += optSim.ranOut
+        ? `Heads up: at this age your money runs short around <b>${optSim.ranOut}</b>.`
+        : `Your money is projected to last all the way to ${p.aEnd}.`;
+    }
+    $("r_optnote").innerHTML=note;
+  }
+
+  // stats
+  const peak=Math.max(...optSim.wealth, optSim.endWealth);
+  const stats=[
+    ["Wealth when you retire", Rstar>p.aEnd?"—":money(optSim.wealth[Math.min(Rstar,p.aEnd)-p.a0] ?? optSim.endWealth)],
+    ["Earliest fully-funded age", opt.fireAge===null? "not within horizon" : (opt.fireAge<=p.a0?"now":opt.fireAge)],
+    ["Wealth at age "+p.aEnd, money(optSim.endWealth)],
+    ["Years of freedom gained", Rstar>p.aEnd?"0":(p.aEnd-Rstar+1)+" yrs"],
+  ];
+  $("r_stats").innerHTML=stats.map(s=>`<div class="stat"><div class="k">${s[0]}</div><div class="v">${s[1]}</div></div>`).join("");
+
+  /* ----- chart: happiness vs retirement age ----- */
+  const hapPts=opt.Rs.map((R,i)=>[R,opt.totals[i]]);
+  const hMin=Math.min(...opt.totals), hMax=Math.max(...opt.totals);
+  drawChart("chart_hap",{
+    xDomain:[p.a0,p.aEnd+1], yDomain:[hMin-(hMax-hMin)*0.08, hMax+(hMax-hMin)*0.08],
+    xlabel:"Age you retire", ylabel:"Lifetime happiness",
+    fmtY:v=>v.toFixed(0),
+    series:[{points:hapPts,color:"var(--hap)",width:2.6}],
+    markers:[{x:Rstar,color:"var(--opt)",label:"optimal "+(Rstar>p.aEnd?"none":Rstar)}],
+    hover:[{label:"Lifetime happiness",color:"var(--hap)",points:hapPts,fmt:v=>v.toFixed(1)}],
+    tipId:"tip_hap", hoverTitle:a=>"Retire at "+a
+  });
+
+  /* ----- chart: wealth ----- */
+  const wOpt=optSim.ages.map((a,i)=>[a,optSim.wealth[i]]);
+  wOpt.push([p.aEnd+1,optSim.endWealth]);
+  const wWork=neverSim.ages.map((a,i)=>[a,neverSim.wealth[i]]);
+  wWork.push([p.aEnd+1,neverSim.endWealth]);
+  const allW=wOpt.concat(wWork).map(d=>d[1]);
+  drawChart("chart_wealth",{
+    xDomain:[p.a0,p.aEnd], yDomain:[Math.min(0,...allW), Math.max(...allW)*1.05],
+    xlabel:"Age", ylabel:"Investable wealth",
+    fmtY:money,
+    series:[
+      {points:wWork,color:"var(--wealthwork)",width:2,dash:true},
+      {points:wOpt,color:"var(--wealth)",width:2.6}
+    ],
+    markers: Rstar<=p.aEnd ? [{x:Rstar,color:"var(--opt)",label:"retire "+Rstar}] : [],
+    hover:[
+      {label:"Retire optimal",color:"var(--wealth)",points:wOpt,fmt:money},
+      {label:"Keep working",color:"#7b8595",points:wWork,fmt:money}
+    ],
+    tipId:"tip_wealth", hoverTitle:a=>"Age "+a
+  });
+
+  /* ----- chart: curves ----- */
+  const cm=[],cf=[],ch=[];
+  for(let age=0; age<=95; age++){ cm.push([age,enjoyMoney(age,p)]); cf.push([age,valueFreedom(age,p)]); ch.push([age,health(age,p)]); }
+  drawChart("chart_curves",{
+    xDomain:[0,95], yDomain:[0,1.02],
+    xlabel:"Age", ylabel:"Relative value (0–1)",
+    fmtY:v=>v.toFixed(1),
+    series:[
+      {points:cm,color:"var(--money)",width:2.6},
+      {points:cf,color:"var(--freedom)",width:2.6},
+      {points:ch,color:"var(--health)",width:1.8,dash:true}
+    ],
+    markers:[{x:p.a0,color:"#9aa4b2",label:"you"}],
+    hover:[
+      {label:"$ → happiness",color:"var(--money)",points:cm,fmt:v=>(v*100).toFixed(0)+"%"},
+      {label:"Freedom value",color:"var(--freedom)",points:cf,fmt:v=>(v*100).toFixed(0)+"%"},
+      {label:"Health",color:"var(--health)",points:ch,fmt:v=>(v*100).toFixed(0)+"%"}
+    ],
+    tipId:"tip_curves", hoverTitle:a=>"Age "+a
+  });
+
+  /* ----- scenario table ----- */
+  const rows=[
+    {name:"Retire now ("+p.a0+")", sim:nowSim, R:p.a0},
+    {name:"Optimal"+(Rstar>p.aEnd?" (never)":" ("+Rstar+")"), sim:optSim, R:Rstar, opt:true},
+    {name:"Never retire", sim:neverSim, R:opt.neverRetire},
+  ];
+  if(opt.fireAge!==null && opt.fireAge>p.a0 && opt.fireAge!==Rstar){
+    rows.splice(1,0,{name:"Fully-funded ("+opt.fireAge+")", sim:simulate(opt.fireAge,p), R:opt.fireAge});
+  }
+  $("tbl_scen").querySelector("tbody").innerHTML=rows.map(rw=>{
+    const lasts=rw.sim.ranOut?("age "+rw.sim.ranOut):"to "+p.aEnd;
+    return `<tr class="${rw.opt?"opt":""}"><td>${rw.name}</td><td>${lasts}</td><td>${money(rw.sim.endWealth)}</td><td>${rw.sim.total.toFixed(1)}</td></tr>`;
+  }).join("");
+
+  // warning
+  const warn=$("r_warn");
+  if(opt.fireAge===null){
+    warn.style.display="block";
+    warn.innerHTML="At your current savings and return, your portfolio never fully funds your retirement spending within your horizon. The 'optimal' age accepts a leaner late life in exchange for freedom — raise your return, savings, or starting assets, or lower retirement spending, to fund it fully.";
+  } else warn.style.display="none";
+}
+
+/* ---------- wire up ---------- */
+["i_age","i_w0","i_inc","i_r","i_sw","i_sr","i_end","i_wm","i_wf","i_fw","i_c0","i_hm","i_rm"]
+  .forEach(id=>{ $(id).addEventListener("input",render); });
+render();
+</script>
+</body>
+</html>
