@@ -21,11 +21,17 @@
   header h1{font-size:1.7rem; margin:0 0 6px;}
   header p.sub{margin:0 0 4px; color:var(--muted); max-width:760px;}
   .layout{display:grid; grid-template-columns:340px 1fr; gap:22px; margin-top:22px;}
-  @media(max-width:880px){ .layout{grid-template-columns:1fr;} }
+  @media(max-width:880px){ .layout{grid-template-columns:1fr;} .panel{position:static;} }
   .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 18px 20px; box-shadow:0 1px 2px rgba(20,30,50,.04);}
   .card h2{font-size:1.02rem; margin:0 0 14px; letter-spacing:.01em;}
   .card h3{font-size:.82rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:18px 0 10px;}
   .panel{position:sticky; top:14px;}
+  .panel-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:10px;}
+  .panel-head h2{margin:0;}
+  .panel-toggle{border:1px solid var(--line); background:#f3f5f9; color:var(--accent); font-weight:600; font-size:.8rem; padding:6px 14px; border-radius:8px; cursor:pointer; flex:none;}
+  .panel-toggle:hover{background:#e9edf5;}
+  label.switch{display:flex; gap:10px; align-items:flex-start; font-size:.86rem; margin:2px 0 14px; cursor:pointer;}
+  label.switch input{margin-top:2px; width:18px; height:18px; accent-color:var(--accent); flex:none;}
   label.field{display:block; margin-bottom:13px; font-size:.86rem;}
   label.field .lab{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; color:var(--muted);}
   label.field .lab b{color:var(--ink); font-weight:600;}
@@ -76,7 +82,11 @@
   <div class="layout">
     <!-- ============ INPUTS ============ -->
     <aside class="card panel">
-      <h2>Your situation</h2>
+      <div class="panel-head">
+        <h2>Your situation</h2>
+        <button type="button" id="togglePanel" class="panel-toggle" aria-expanded="true">Hide</button>
+      </div>
+      <div id="panelBody">
 
       <label class="field">
         <span class="lab">Current age <b id="o_age">30</b></span>
@@ -96,9 +106,15 @@
       </label>
 
       <label class="field">
-        <span class="lab">Expected return / yr <b id="o_r">7%</b></span>
+        <span class="lab">Expected return / yr (nominal) <b id="o_r">7%</b></span>
         <input type="number" id="i_r" value="7" min="-5" max="40" step="0.5">
-        <span class="hint">Real annual return on investments (try 7%, 10%, 20%).</span>
+        <span class="hint">Before inflation (try 7%, 10%, 20%).</span>
+      </label>
+
+      <label class="field">
+        <span class="lab">Inflation / yr <b id="o_inf">3%</b></span>
+        <input type="number" id="i_inf" value="3" min="0" max="20" step="0.5">
+        <span class="hint">Real return after inflation: <b id="o_rr">&mdash;</b>/yr. Everything stays in today's dollars.</span>
       </label>
 
       <h3>Spending &amp; horizon</h3>
@@ -118,6 +134,11 @@
       <label class="field">
         <span class="lab">Plan to age <b id="o_end">90</b></span>
         <input type="number" id="i_end" value="90" min="40" max="110" step="1">
+      </label>
+
+      <label class="switch">
+        <input type="checkbox" id="i_preserve" checked>
+        <span><b>Sustainable: never spend principal</b><br><span class="hint">Live only off real investment returns so your nest egg keeps its purchasing power. Uncheck to allow drawing it down.</span></span>
       </label>
 
       <details>
@@ -153,6 +174,7 @@
           </label>
         </div>
       </details>
+      </div>
     </aside>
 
     <!-- ============ RESULTS ============ -->
@@ -205,7 +227,7 @@
       <div class="card chartcard">
         <h2>Scenario comparison</h2>
         <table class="scen" id="tbl_scen">
-          <thead><tr><th>Strategy</th><th>Money lasts to</th><th>Wealth at end</th><th>Lifetime happiness</th></tr></thead>
+          <thead><tr><th>Strategy</th><th>Lifestyle funded</th><th>Wealth at end</th><th>Lifetime happiness</th></tr></thead>
           <tbody></tbody>
         </table>
         <div class="warn" id="r_warn" style="display:none;"></div>
@@ -213,7 +235,7 @@
 
       <div class="card about">
         <h2>How this works &amp; the research behind it</h2>
-        <p><b>Wealth.</b> Each year your portfolio compounds at your expected return. While working you add savings (income &minus; spending); once retired you withdraw your spending from the portfolio. If it can no longer cover your spending, consumption is capped at whatever's left.</p>
+        <p><b>Wealth (today's dollars).</b> Everything is shown in real terms. Your nominal return is discounted by inflation to a <b>real</b> return &mdash; <code>(1+return)/(1+inflation) &minus; 1</code> &mdash; and that's what compounds your portfolio, so a 10% return with 3% inflation really grows your buying power by ~6.8%/yr. While working you add savings (income &minus; spending). In retirement the default <b>sustainable</b> rule spends only the real return, so your principal keeps its purchasing power and the nest egg lasts indefinitely; the egg you need is roughly <code>retirement spending ÷ real return</code>. If returns can't cover your target, consumption is capped at the return (you live leaner rather than eroding capital). Turn the sustainability switch off to allow drawing principal down instead.</p>
         <p><b>Happiness.</b> Each year of life earns happiness from two sources:</p>
         <ul>
           <li><b>Money</b> &mdash; <code>moneyEmphasis × enjoymentAbility(age) × ln(1 + spending/satisfies)</code>. The <code>ln</code> captures <i>diminishing marginal utility</i>: happiness rises with the <b>logarithm</b> of income, so the first dollars matter far more than the last.</li>
@@ -253,11 +275,14 @@ function money0(n){ return "$"+Math.round(n).toLocaleString(); }
 /* ---------- inputs ---------- */
 function readInputs(){
   const v = id => parseFloat($(id).value);
+  const rNominal = v("i_r")/100, inflation = v("i_inf")/100;
+  const r = (1+rNominal)/(1+inflation) - 1;   // real return; everything in today's dollars
   return {
     a0: Math.round(v("i_age")),
     W0: v("i_w0"),
     income: v("i_inc"),
-    r: v("i_r")/100,
+    rNominal, inflation, r,
+    preserve: $("i_preserve").checked,
     spendWork: v("i_sw"),
     spendRetire: v("i_sr"),
     aEnd: Math.round(v("i_end")),
@@ -283,7 +308,7 @@ function valueFreedom(age,p){ return rise(age,p)*Math.pow(health(age,p),p.freedo
 function simulate(R,p){
   let W = p.W0;
   const ages=[], wealth=[], cons=[], hap=[];
-  let ranOut=null, total=0;
+  let ranOut=null, shortAge=null, total=0;
   for(let age=p.a0; age<=p.aEnd; age++){
     ages.push(age); wealth.push(W);
     let c, Wend;
@@ -291,7 +316,14 @@ function simulate(R,p){
     if(!retired){
       c = p.spendWork;
       Wend = W*(1+p.r) + (p.income - p.spendWork);
+    } else if(p.preserve){
+      // sustainable: spend only the real return, so principal never declines
+      const realIncome = p.r * W;
+      c = Math.min(p.spendRetire, Math.max(0, realIncome));
+      Wend = W + realIncome - c;                    // >= W (principal preserved or growing)
+      if(c < p.spendRetire - 1e-6 && shortAge===null) shortAge = age;
     } else {
+      // drawdown allowed: withdraw spending from the portfolio
       const avail = W*(1+p.r);
       c = Math.min(p.spendRetire, Math.max(0,avail));
       Wend = Math.max(0, avail - c);
@@ -305,7 +337,7 @@ function simulate(R,p){
     total += mh+fh;
     W = Wend;
   }
-  return {ages, wealth, cons, hap, endWealth:W, ranOut, total};
+  return {ages, wealth, cons, hap, endWealth:W, ranOut, shortAge, total};
 }
 
 /* ---------- optimize over all retirement ages ---------- */
@@ -317,12 +349,14 @@ function optimize(p){
     Rs.push(R); totals.push(s.total);
     if(s.total>best.total) best={R, total:s.total, sim:s};
   }
-  // earliest fully-funded ("classic FIRE") age: money lasts to aEnd
-  let fireAge=null;
+  // earliest age you can retire while fully funding your lifestyle (sustainably, if enabled)
+  let sustainableAge=null;
   for(let R=p.a0; R<=p.aEnd; R++){
-    if(simulate(R,p).ranOut===null){ fireAge=R; break; }
+    const s=simulate(R,p);
+    const ok = p.preserve ? (s.shortAge===null) : (s.ranOut===null);
+    if(ok){ sustainableAge=R; break; }
   }
-  return {Rs, totals, best, fireAge, neverRetire:p.aEnd+1};
+  return {Rs, totals, best, sustainableAge, neverRetire:p.aEnd+1};
 }
 
 /* ============ generic SVG line chart with hover ============ */
@@ -437,7 +471,9 @@ function render(){
   $("o_age").textContent=p.a0;
   $("o_w0").textContent=money0(p.W0);
   $("o_inc").textContent=money0(p.income);
-  $("o_r").textContent=(p.r*100).toFixed(1)+"%";
+  $("o_r").textContent=(p.rNominal*100).toFixed(1)+"%";
+  $("o_inf").textContent=(p.inflation*100).toFixed(1)+"%";
+  $("o_rr").textContent=(p.r*100).toFixed(1)+"%";
   $("o_end").textContent=p.aEnd;
   $("o_wm").textContent=p.wMoney.toFixed(2);
   $("o_wf").textContent=p.wFreedom.toFixed(2);
@@ -463,18 +499,26 @@ function render(){
       ? "You could step away today and still come out ahead on lifetime happiness."
       : `That's about <b>${yrs}</b> more year${yrs===1?"":"s"} of work. `;
     if(Rstar>p.a0){
-      note += optSim.ranOut
-        ? `Heads up: at this age your money runs short around <b>${optSim.ranOut}</b>.`
-        : `Your money is projected to last all the way to ${p.aEnd}.`;
+      if(p.preserve){
+        note += optSim.shortAge===null
+          ? `Your real investment returns fully cover your lifestyle, so your principal stays intact for life.`
+          : `To avoid touching principal you'd live on about <b>${money0(Math.round(optSim.cons[optSim.cons.length-1]))}</b>/yr (returns only), below your ${money0(p.spendRetire)} target.`;
+      } else {
+        note += optSim.ranOut
+          ? `Heads up: drawing down, your money runs out around <b>${optSim.ranOut}</b>.`
+          : `Your money is projected to last all the way to ${p.aEnd}.`;
+      }
     }
     $("r_optnote").innerHTML=note;
   }
 
   // stats
-  const peak=Math.max(...optSim.wealth, optSim.endWealth);
+  const nestEgg = p.r>0 ? p.spendRetire/p.r : Infinity;
   const stats=[
+    ["Real return used", (p.r*100).toFixed(1)+"%"],
+    ["Nest egg to live off returns", isFinite(nestEgg)? money(nestEgg) : "∞ (real return ≤ 0)"],
+    ["Earliest sustainable age", opt.sustainableAge===null? "not within horizon" : (opt.sustainableAge<=p.a0?"now":opt.sustainableAge)],
     ["Wealth when you retire", Rstar>p.aEnd?"—":money(optSim.wealth[Math.min(Rstar,p.aEnd)-p.a0] ?? optSim.endWealth)],
-    ["Earliest fully-funded age", opt.fireAge===null? "not within horizon" : (opt.fireAge<=p.a0?"now":opt.fireAge)],
     ["Wealth at age "+p.aEnd, money(optSim.endWealth)],
     ["Years of freedom gained", Rstar>p.aEnd?"0":(p.aEnd-Rstar+1)+" yrs"],
   ];
@@ -501,7 +545,7 @@ function render(){
   const allW=wOpt.concat(wWork).map(d=>d[1]);
   drawChart("chart_wealth",{
     xDomain:[p.a0,p.aEnd], yDomain:[Math.min(0,...allW), Math.max(...allW)*1.05],
-    xlabel:"Age", ylabel:"Investable wealth",
+    xlabel:"Age", ylabel:"Wealth (today's $)",
     fmtY:money,
     series:[
       {points:wWork,color:"var(--wealthwork)",width:2,dash:true},
@@ -542,25 +586,42 @@ function render(){
     {name:"Optimal"+(Rstar>p.aEnd?" (never)":" ("+Rstar+")"), sim:optSim, R:Rstar, opt:true},
     {name:"Never retire", sim:neverSim, R:opt.neverRetire},
   ];
-  if(opt.fireAge!==null && opt.fireAge>p.a0 && opt.fireAge!==Rstar){
-    rows.splice(1,0,{name:"Fully-funded ("+opt.fireAge+")", sim:simulate(opt.fireAge,p), R:opt.fireAge});
+  if(opt.sustainableAge!==null && opt.sustainableAge>p.a0 && opt.sustainableAge!==Rstar){
+    rows.splice(1,0,{name:"Sustainable ("+opt.sustainableAge+")", sim:simulate(opt.sustainableAge,p), R:opt.sustainableAge});
   }
   $("tbl_scen").querySelector("tbody").innerHTML=rows.map(rw=>{
-    const lasts=rw.sim.ranOut?("age "+rw.sim.ranOut):"to "+p.aEnd;
-    return `<tr class="${rw.opt?"opt":""}"><td>${rw.name}</td><td>${lasts}</td><td>${money(rw.sim.endWealth)}</td><td>${rw.sim.total.toFixed(1)}</td></tr>`;
+    let funded;
+    if(p.preserve){ funded = rw.sim.shortAge===null ? "fully" : ("lean from "+rw.sim.shortAge); }
+    else { funded = rw.sim.ranOut ? ("runs out @"+rw.sim.ranOut) : "to "+p.aEnd; }
+    return `<tr class="${rw.opt?"opt":""}"><td>${rw.name}</td><td>${funded}</td><td>${money(rw.sim.endWealth)}</td><td>${rw.sim.total.toFixed(1)}</td></tr>`;
   }).join("");
 
   // warning
   const warn=$("r_warn");
-  if(opt.fireAge===null){
+  if(opt.sustainableAge===null){
     warn.style.display="block";
-    warn.innerHTML="At your current savings and return, your portfolio never fully funds your retirement spending within your horizon. The 'optimal' age accepts a leaner late life in exchange for freedom — raise your return, savings, or starting assets, or lower retirement spending, to fund it fully.";
+    warn.innerHTML = p.r<=0
+      ? "Your <b>real return is ≤ 0</b> — inflation is cancelling out your returns, so no portfolio is self-sustaining. Raise your expected return or lower your inflation assumption."
+      : "Within your horizon your portfolio never grows enough to fund your retirement spending from real returns alone. The optimal age above accepts a leaner, returns-only lifestyle in exchange for freedom — raise savings, return, or starting assets, or lower retirement spending, to reach a fully sustainable retirement.";
   } else warn.style.display="none";
 }
 
 /* ---------- wire up ---------- */
-["i_age","i_w0","i_inc","i_r","i_sw","i_sr","i_end","i_wm","i_wf","i_fw","i_c0","i_hm","i_rm"]
+["i_age","i_w0","i_inc","i_r","i_inf","i_sw","i_sr","i_end","i_wm","i_wf","i_fw","i_c0","i_hm","i_rm"]
   .forEach(id=>{ $(id).addEventListener("input",render); });
+$("i_preserve").addEventListener("change",render);
+
+/* ---------- collapsible input panel (collapsed by default on mobile) ---------- */
+const tbtn=$("togglePanel"), pbody=$("panelBody"), aside=document.querySelector(".panel");
+function setCollapsed(c){
+  aside.classList.toggle("collapsed", c);
+  pbody.style.display = c ? "none" : "";
+  tbtn.textContent = c ? "Show" : "Hide";
+  tbtn.setAttribute("aria-expanded", String(!c));
+}
+tbtn.addEventListener("click", ()=> setCollapsed(pbody.style.display!=="none"));
+setCollapsed(window.matchMedia("(max-width:880px)").matches);
+
 render();
 </script>
 </body>
