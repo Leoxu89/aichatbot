@@ -1,0 +1,11 @@
+# Secrets and local config — never commit these
+.env
+config.yaml
+agent_state.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/

@@ -1,0 +1,81 @@
+# =============================================================================
+# Property Social Agent configuration.
+# Copy this file to "config.yaml" and edit for your setup.
+# Secrets (API keys, passwords) live in .env, NOT here.
+# =============================================================================
+
+# Where your property photo folders live. The agent scans subfolders here,
+# one subfolder per property.
+#   photos_root/
+#     123-main-st/
+#       front.jpg
+#       kitchen.jpg
+#       description.md      <-- the "copy" for this property
+#     45-ocean-ave/
+#       ...
+photos_root: "/Users/you/Properties"
+
+# Which property to feature. Options:
+#   "rotate"  -> pick the next property that hasn't been posted recently
+#   "<name>"  -> always feature a specific subfolder, e.g. "123-main-st"
+property_selection: "rotate"
+
+# How many photos to include in each post (Instagram carousel max is 10).
+photos_per_post: 4
+
+# File extensions treated as photos.
+photo_extensions: [".jpg", ".jpeg", ".png", ".heic", ".webp"]
+
+# Filenames (any extension) treated as the property "copy"/description.
+# The agent reads the first match it finds in the property folder.
+copy_filenames: ["description.md", "description.txt", "copy.md", "listing.txt", "details.pdf"]
+
+# --- Photo selection ---------------------------------------------------------
+selection:
+  # "heuristic"  -> rank by resolution + sharpness, skip already-posted photos
+  # "vision"     -> additionally ask Claude to pick the most appealing shots
+  mode: "vision"
+  # Don't reuse a photo that was posted within this many days.
+  reuse_after_days: 90
+
+# --- Content generation ------------------------------------------------------
+content:
+  model: "claude-opus-4-8"     # used for summarizing copy + writing captions (claude-sonnet-4-6 is a cheaper option)
+  # Brand voice / instructions handed to Claude for every caption.
+  brand_voice: >
+    Warm, professional real-estate voice. Highlight lifestyle and standout
+    features. No hype words like "stunning" or "must-see". 1-2 short paragraphs.
+  # Hashtag strategy.
+  hashtags:
+    count: 12
+    always_include: ["#realestate", "#forsale"]
+  # Include a call to action line.
+  call_to_action: "DM us or visit the link in bio to book a private showing."
+
+# --- Platforms ---------------------------------------------------------------
+platforms:
+  instagram: true
+  facebook: true
+
+# --- Image hosting (required for Instagram) ----------------------------------
+# Instagram's API only posts images it can fetch from a PUBLIC URL.
+image_host:
+  # "s3"        -> agent uploads selected photos to an S3-compatible bucket
+  # "base_url"  -> you already serve photos_root publicly; just map paths to a URL
+  # "none"      -> skip Instagram image hosting (Facebook still works via direct upload)
+  type: "s3"
+  # Only used when type = "base_url": the public URL that maps to photos_root.
+  base_url: "https://photos.example.com/properties"
+
+# --- Approval email ----------------------------------------------------------
+approval:
+  recipient: "you@gmail.com"
+  # The agent waits this long for your "APPROVE" reply before timing out.
+  timeout_minutes: 720
+  # How often to check your inbox for a reply.
+  poll_interval_seconds: 60
+
+# --- Schedule (informational; actual scheduling is via cron/launchd/Task Scheduler) ---
+schedule:
+  # Documented in README. e.g. run every Monday at 9am.
+  human_readable: "Every Monday 09:00 local time"

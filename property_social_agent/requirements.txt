@@ -1,0 +1,12 @@
+# Core
+anthropic>=0.40.0        # Claude API for summarizing copy + generating captions
+PyYAML>=6.0              # config.yaml parsing
+python-dotenv>=1.0.0     # load secrets from .env
+requests>=2.31.0         # Meta Graph API + image-host calls
+Pillow>=10.0.0           # image inspection / scoring (resolution, sharpness)
+
+# Optional copy formats
+pypdf>=4.0.0             # read .pdf property descriptions (optional)
+
+# Optional image hosting for Instagram (only needed if using the S3 host)
+boto3>=1.34.0            # upload selected photos to an S3-compatible bucket
