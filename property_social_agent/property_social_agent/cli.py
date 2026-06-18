@@ -28,7 +28,22 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("list-properties", help="List property folders the agent can see")
 
+    p_demo = sub.add_parser(
+        "demo", help="Try the web approval dashboard on sample data (no setup needed)"
+    )
+    p_demo.add_argument("--port", type=int, default=8000, help="Local port (default 8000)")
+    p_demo.add_argument(
+        "--no-browser", action="store_true", help="Don't auto-open a browser tab"
+    )
+
     args = parser.parse_args(argv)
+
+    if args.command == "demo":
+        from .demo import run_demo
+
+        run_demo(port=args.port, open_browser=not args.no_browser)
+        return 0
+
     cfg = Config.load(args.config)
 
     if args.command == "list-properties":

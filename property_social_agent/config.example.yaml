@@ -67,13 +67,22 @@ image_host:
   # Only used when type = "base_url": the public URL that maps to photos_root.
   base_url: "https://photos.example.com/properties"
 
-# --- Approval email ----------------------------------------------------------
+# --- Approval ----------------------------------------------------------------
 approval:
+  # "email" -> emails you the draft; you reply APPROVE/REJECT (works when away)
+  # "web"   -> opens a local dashboard with editable captions + Approve/Reject
+  method: "email"
+
+  # Used when method = "email"
   recipient: "you@gmail.com"
   # The agent waits this long for your "APPROVE" reply before timing out.
   timeout_minutes: 720
   # How often to check your inbox for a reply.
   poll_interval_seconds: 60
+
+  # Used when method = "web"
+  web_host: "127.0.0.1"
+  web_port: 8000
 
 # --- Schedule (informational; actual scheduling is via cron/launchd/Task Scheduler) ---
 schedule:

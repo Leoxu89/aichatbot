@@ -21,7 +21,26 @@ scan folders → pick property → select photos → read + summarize copy (Clau
 
 ---
 
-## Quick start
+## Try the demo first (no setup, no credentials)
+
+The fastest way to see it work — no accounts, API keys, or folders needed:
+
+```bash
+cd property_social_agent
+pip install -r requirements.txt
+python -m property_social_agent demo
+```
+
+This generates a sample property, then opens a **local approval dashboard** at
+<http://localhost:8000> with the photos and editable Instagram/Facebook captions.
+Edit any text, click **Approve**, and it simulates posting (prints the final
+caption instead of actually posting). Use `--port` to change the port and
+`--no-browser` if you're on a headless machine.
+
+> The demo runs entirely on your machine. Nothing is sent anywhere and no
+> account is touched — it's purely to show the selection → caption → approval flow.
+
+## Quick start (real use)
 
 ```bash
 cd property_social_agent
@@ -117,7 +136,16 @@ Choose an `image_host` in `config.yaml`:
 
 ---
 
-## Email approval
+## Approval: email or local web dashboard
+
+Set `approval.method` in `config.yaml`:
+
+- **`web`** — opens the local dashboard (same one the `demo` uses) showing the
+  photos and editable captions with Approve / Reject buttons. Best when you run
+  the agent at the same machine you review from.
+- **`email`** — emails you the draft and waits for your reply (best when away).
+
+### Email approval
 
 The agent emails the draft (captions + photo attachments) to `approval.recipient`,
 then watches that inbox for your reply.
@@ -160,9 +188,10 @@ scheduled time; you can approve from your phone whenever the email arrives.
 
 | Command | Description |
 | --- | --- |
+| `python -m property_social_agent demo` | Try the web dashboard on sample data — no setup or credentials |
 | `python -m property_social_agent list-properties` | List property folders + when each was last posted |
 | `python -m property_social_agent run --dry-run` | Select + draft only; no Claude call, no email, no posting |
-| `python -m property_social_agent run` | Full cycle: select → generate → email → approve → post |
+| `python -m property_social_agent run` | Full cycle: select → generate → approve (email or web) → post |
 
 Use `-c path/to/config.yaml` and `-s path/to/state.json` to override file locations.
 
@@ -192,6 +221,8 @@ property_social_agent/
     ├── content_generator.py# Claude: summarize + write captions + rank photos
     ├── image_host.py       # public image hosting for Instagram (s3 / base_url)
     ├── approval.py         # email the draft, poll inbox for APPROVE/REJECT
+    ├── webapp.py           # local web dashboard approval (Flask)
+    ├── demo.py             # zero-setup demo on sample data
     ├── agent.py            # orchestrator
     ├── cli.py              # command-line entry point
     └── publishers/

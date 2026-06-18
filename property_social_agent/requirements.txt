@@ -4,6 +4,7 @@ PyYAML>=6.0              # config.yaml parsing
 python-dotenv>=1.0.0     # load secrets from .env
 requests>=2.31.0         # Meta Graph API + image-host calls
 Pillow>=10.0.0           # image inspection / scoring (resolution, sharpness)
+Flask>=3.0.0            # local web approval dashboard + `demo` command
 
 # Optional copy formats
 pypdf>=4.0.0             # read .pdf property descriptions (optional)

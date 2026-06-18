@@ -50,17 +50,27 @@ def run_once(cfg: Config, state: State, *, dry_run: bool = False) -> None:
         print("[agent] (dry-run) Skipping approval email and posting. Done.")
         return
 
-    token = new_token()
-    approved = request_approval(
-        cfg,
-        ApprovalRequest(
-            token=token,
-            property_name=property_name,
-            photos=photo_paths,
-            content=content,
-            platforms=platforms,
-        ),
+    req = ApprovalRequest(
+        token=new_token(),
+        property_name=property_name,
+        photos=photo_paths,
+        content=content,
+        platforms=platforms,
     )
+    method = cfg.approval.get("method", "email")
+    if method == "web":
+        from .webapp import run_web_approval
+
+        decision = run_web_approval(
+            req,
+            host=cfg.approval.get("web_host", "127.0.0.1"),
+            port=int(cfg.approval.get("web_port", 8000)),
+        )
+        approved = decision.approved
+        content = decision.content  # use any inline edits the user made
+    else:
+        approved = request_approval(cfg, req)
+
     if not approved:
         print("[agent] Not approved — nothing was posted.")
         return
